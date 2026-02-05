@@ -1,0 +1,5 @@
+{
+  "name": "DealWhisperer",
+  "description": "AI-powered P2P marketplace negotiation agent that simultaneously manages deals across multiple platforms (Karrot, Bungae, Joonggo) to get you the best price.",
+  "requestFramePermissions": []
+}
