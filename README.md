@@ -7,7 +7,8 @@
 This contains everything you need to run your app locally.
 
 <div align="center">
-<img width="300" alt="App Screenshot" src="./p2p-ai.png" />
+<img width="300" alt="App Screenshot 1" src="./p2p-ai.png" />
+<img width="300" alt="App Screenshot 2" src="./ai-p2p2.png" />
 </div>
 
 ## Demo Video
