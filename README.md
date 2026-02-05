@@ -6,10 +6,6 @@
 
 This contains everything you need to run your app locally.
 
-<div align="center">
-<img width="300" alt="App Screenshot" src="./p2p-ai.png" />
-</div>
-
 View your app in AI Studio: https://ai.studio/apps/drive/1Uct7BrFtxfDinyAr1ThvP8zuBeJnD5V9
 
 ## Run Locally

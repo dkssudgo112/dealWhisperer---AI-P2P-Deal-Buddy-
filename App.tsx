@@ -151,105 +151,125 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // --- NEGOTIATION LOOP ---
+  // Faster, parallel processing for demo purposes
   useEffect(() => {
     if (negotiationQueue.size === 0) {
       setIsAutoNegotiating(false);
       return;
     }
 
-    const interval = setInterval(async () => {
+    const interval = setInterval(() => {
       setListings(prevListings => {
-        const newListings = [...prevListings];
-        const activeIds = Array.from(negotiationQueue);
-        
-        const targetId = activeIds[Math.floor(Math.random() * activeIds.length)];
-        const index = newListings.findIndex(l => l.id === targetId);
-        
-        if (index === -1) return prevListings;
+        return prevListings.map(listing => {
+           // Skip if not in queue
+           if (!negotiationQueue.has(listing.id)) return listing;
 
-        const listing = newListings[index];
-
-        if ([DealStatus.DealClosed, DealStatus.Failed, DealStatus.OfferReceived, DealStatus.Stopped].includes(listing.status)) {
-          const newQueue = new Set(negotiationQueue);
-          newQueue.delete(listing.id);
-          setNegotiationQueue(newQueue);
-          return prevListings;
-        }
-
-        if (listing.negotiationHistory.length === 0) {
-           newListings[index] = {
-             ...listing,
-             status: DealStatus.Negotiating,
-             aiActionState: "Sending inquiry...",
-             negotiationHistory: [{ sender: 'AI', text: "Hi, is this still available?", timestamp: new Date() }]
-           };
-           return newListings;
-        }
-
-        const lastMsg = listing.negotiationHistory[listing.negotiationHistory.length - 1];
-
-        if (lastMsg.sender === 'Seller' && listing.aiActionState !== "Typing reply...") {
-           newListings[index] = { ...listing, aiActionState: "Typing reply..." };
-           return newListings;
-        }
-
-        if (lastMsg.sender === 'Seller' && listing.aiActionState === "Typing reply...") {
-           const turns = listing.negotiationHistory.length;
-           let nextText = "";
-           
-           if (turns <= 3) {
-             const offer = Math.floor(listing.currentPrice * 0.85);
-             nextText = `I'm interested. Would you take $${offer}?`;
-           } else {
-             const previousOfferMatch = listing.negotiationHistory.filter(m => m.sender === 'AI' && m.text.includes('$')).pop()?.text.match(/\$(\d+)/);
-             const previousOffer = previousOfferMatch ? parseInt(previousOfferMatch[1]) : listing.currentPrice * 0.8;
-             const newOffer = Math.floor((previousOffer + listing.currentPrice) / 2);
-             nextText = `How about $${newOffer}? That's my best offer.`;
+           // Skip if finished (cleanup will be handled by separate effect)
+           if ([DealStatus.DealClosed, DealStatus.Failed, DealStatus.OfferReceived, DealStatus.Stopped].includes(listing.status)) {
+             return listing;
            }
 
-           newListings[index] = {
-             ...listing,
-             aiActionState: "Waiting for seller...",
-             negotiationHistory: [...listing.negotiationHistory, { 
-               sender: 'AI', 
-               text: nextText, 
-               timestamp: new Date() 
-             }]
-           };
-           return newListings;
-        }
+           // Random skip to create slight natural staggering (30% chance to wait)
+           // But much faster than before
+           if (Math.random() > 0.7) return listing;
 
-        if (lastMsg.sender === 'AI') {
-           if (Math.random() > 0.3) {
-             newListings[index] = { ...listing, aiActionState: "Seller is reading..." };
-             return newListings;
+           // -- STATE MACHINE --
+
+           // 1. Initial State: Send Inquiry
+           if (listing.negotiationHistory.length === 0) {
+              return {
+                ...listing,
+                status: DealStatus.Negotiating,
+                aiActionState: "Sending inquiry...",
+                negotiationHistory: [{ sender: 'AI', text: "Hi, is this still available?", timestamp: new Date() }]
+              };
            }
 
-           const aiOfferMatch = lastMsg.text.match(/\$(\d+)/);
-           const aiOffer = aiOfferMatch ? parseInt(aiOfferMatch[1]) : listing.currentPrice;
+           const lastMsg = listing.negotiationHistory[listing.negotiationHistory.length - 1];
 
-           const response = simulateSellerResponse(listing, aiOffer, listing.negotiationHistory.length);
-           
-           newListings[index] = {
-             ...listing,
-             currentPrice: response.newPrice,
-             status: response.status,
-             aiActionState: response.status === DealStatus.OfferReceived ? "Deal Possible!" : "Analyzing counter-offer...",
-             negotiationHistory: [...listing.negotiationHistory, { 
-               sender: 'Seller', 
-               text: response.message, 
-               timestamp: new Date() 
-             }]
-           };
-           return newListings;
-        }
+           // 2. Seller replied -> AI needs to prepare reply
+           if (lastMsg.sender === 'Seller' && listing.aiActionState !== "Typing reply...") {
+              return { ...listing, aiActionState: "Typing reply..." };
+           }
 
-        return newListings;
+           // 3. AI is Ready to Reply -> Send Offer
+           if (lastMsg.sender === 'Seller' && listing.aiActionState === "Typing reply...") {
+              const turns = listing.negotiationHistory.length;
+              let nextText = "";
+              
+              if (turns <= 3) {
+                const offer = Math.floor(listing.currentPrice * 0.85);
+                nextText = `I'm interested. Would you take $${offer}?`;
+              } else {
+                const previousOfferMatch = listing.negotiationHistory.filter(m => m.sender === 'AI' && m.text.includes('$')).pop()?.text.match(/\$(\d+)/);
+                const previousOffer = previousOfferMatch ? parseInt(previousOfferMatch[1]) : listing.currentPrice * 0.8;
+                const newOffer = Math.floor((previousOffer + listing.currentPrice) / 2);
+                nextText = `How about $${newOffer}? That's my best offer.`;
+              }
+
+              return {
+                ...listing,
+                aiActionState: "Waiting for seller...",
+                negotiationHistory: [...listing.negotiationHistory, { 
+                  sender: 'AI', 
+                  text: nextText, 
+                  timestamp: new Date() 
+                }]
+              };
+           }
+
+           // 4. AI replied -> Seller needs to respond
+           if (lastMsg.sender === 'AI') {
+              // 15% chance to "read" (wait 1 tick)
+              if (Math.random() < 0.15) {
+                return { ...listing, aiActionState: "Seller is reading..." };
+              }
+
+              const aiOfferMatch = lastMsg.text.match(/\$(\d+)/);
+              const aiOffer = aiOfferMatch ? parseInt(aiOfferMatch[1]) : listing.currentPrice;
+
+              const response = simulateSellerResponse(listing, aiOffer, listing.negotiationHistory.length);
+              
+              return {
+                ...listing,
+                currentPrice: response.newPrice,
+                status: response.status,
+                aiActionState: response.status === DealStatus.OfferReceived ? "Deal Possible!" : "Analyzing counter-offer...",
+                negotiationHistory: [...listing.negotiationHistory, { 
+                  sender: 'Seller', 
+                  text: response.message, 
+                  timestamp: new Date() 
+                }]
+              };
+           }
+
+           return listing;
+        });
       });
-    }, 1500);
+    }, 800); // 0.8s tick for faster demo
 
     return () => clearInterval(interval);
   }, [negotiationQueue]);
+
+  // Cleanup finished negotiations from the queue to stop their processing
+  useEffect(() => {
+    if (negotiationQueue.size === 0) return;
+
+    // We check if any queued items are now finished
+    const finishedIds = listings
+      .filter(l => negotiationQueue.has(l.id))
+      .filter(l => [DealStatus.DealClosed, DealStatus.Failed, DealStatus.OfferReceived, DealStatus.Stopped].includes(l.status))
+      .map(l => l.id);
+
+    if (finishedIds.length > 0) {
+      setNegotiationQueue(prev => {
+        const next = new Set(prev);
+        finishedIds.forEach(id => next.delete(id));
+        return next;
+      });
+    }
+  }, [listings, negotiationQueue]);
 
 
   const handleNegotiateSingle = (id: string) => {
@@ -269,7 +289,7 @@ const App: React.FC = () => {
     setIsScheduling(true);
 
     // Simulate Google Calendar API Sync
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Slightly faster sync simulation
 
     setListings(prev => prev.map(l => {
       if (l.id === showScheduleModal.id) {

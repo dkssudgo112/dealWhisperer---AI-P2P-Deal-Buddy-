@@ -32,7 +32,6 @@ const PRODUCT_IMAGES: Record<string, string> = {
 
 export const checkHasStockImages = (query: string): boolean => {
   const lower = query.toLowerCase();
-  const keys = Object.keys(PRODUCT_IMAGES);
   
   // Check specific categories
   if (lower.includes('tv') || lower.includes('television') || lower.includes('monitor')) return true;
@@ -72,7 +71,6 @@ const getImageForQuery = (query: string, index: number): string => {
 
 // Specific Scenario Data for "iPhone 14 Pro"
 const SCENARIO_LISTINGS: Listing[] = [
-  // ... (keep existing scenario listings unchanged, just truncated for brevity in update if needed, but for XML correctness I should include them or just assume the file is replaced. I will replace full content to be safe)
   // --- QuickSell Items ---
   {
     id: 'qs-001',
@@ -380,6 +378,24 @@ export const simulateSellerResponse = (
   
   const gap = offerPrice - listing.minPriceLimit;
 
+  // FAST TRACK: Urgent sellers accept almost anything reasonable immediately
+  if (listing.sellerPersona === 'urgent' && turns > 1 && gap >= -20) {
+      return {
+        newPrice: offerPrice,
+        message: "You know what, I need cash. Deal.",
+        status: DealStatus.OfferReceived
+      };
+  }
+
+  // FAST TRACK: Friendly sellers accept faster
+  if (listing.sellerPersona === 'friendly' && turns >= 2 && gap >= 0) {
+      return {
+        newPrice: offerPrice,
+        message: "Sure, I can do that! When can you pick it up? 😊",
+        status: DealStatus.OfferReceived
+      };
+  }
+
   // Default response if initial inquiry (no price offer usually)
   if (turns <= 2 && offerPrice === listing.currentPrice) {
     if (listing.sellerPersona === 'blunt') return { newPrice: listing.currentPrice, message: "yes available.", status: DealStatus.Negotiating };
@@ -399,8 +415,10 @@ export const simulateSellerResponse = (
   }
 
   // TUG OF WAR LOGIC based on turns
-  if (turns < 5 && gap >= 0) {
-      if (Math.random() > 0.5) {
+  // REDUCED max turns from 5 to 3 for faster demo
+  if (turns < 3 && gap >= 0) {
+      // 40% chance to counter (was 50%)
+      if (Math.random() > 0.6) {
         const counter = Math.floor((listing.currentPrice + offerPrice) / 2);
         if (listing.sellerPersona === 'firm') {
           return { newPrice: listing.currentPrice, message: `I have other offers. I can't go lower than ${listing.currentPrice} yet.`, status: DealStatus.Negotiating };
@@ -415,8 +433,12 @@ export const simulateSellerResponse = (
 
   // ACCEPTANCE LOGIC
   if (gap >= 0) {
-    if (listing.sellerPersona === 'firm' && turns < 4) {
-      return { newPrice: listing.currentPrice, message: "I'll think about it. Message me again in an hour.", status: DealStatus.Negotiating };
+    // Even firm sellers yield faster now
+    if (listing.sellerPersona === 'firm' && turns < 3) {
+       // Small chance to stall
+       if (Math.random() > 0.7) {
+          return { newPrice: listing.currentPrice, message: "I'll think about it. Message me again in an hour.", status: DealStatus.Negotiating };
+       }
     }
 
     return {

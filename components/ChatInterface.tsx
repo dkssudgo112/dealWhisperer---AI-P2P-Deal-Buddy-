@@ -47,7 +47,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, onSendMe
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      {/* Safari Fix: translate-z-0 forces hardware acceleration to prevent blank rendering during scroll */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 transform translate-z-0" style={{ WebkitOverflowScrolling: 'touch' }}>
         {messages.map((msg) => (
           <div 
             key={msg.id} 

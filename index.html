@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>DealWhisperer - AI Negotiation Buddy</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -30,6 +30,24 @@
       }
     </script>
     <style>
+      /* Critical Fixes for Safari Mobile */
+      html, body {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* Prevent body scroll */
+        position: fixed; /* Lock viewport */
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      #root {
+        height: 100%;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
       /* Custom Scrollbar for Chat */
       ::-webkit-scrollbar {
         width: 6px;
@@ -48,6 +66,7 @@
       .glass-panel {
         background: rgba(30, 41, 59, 0.7);
         backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px); /* Safari support */
         border: 1px solid rgba(255, 255, 255, 0.1);
       }
     </style>
@@ -63,8 +82,8 @@
 }
 </script>
 </head>
-  <body class="bg-dark-900 text-slate-200 h-screen overflow-hidden selection:bg-quicksell selection:text-white">
-    <div id="root" class="h-full"></div>
+  <body class="bg-dark-900 text-slate-200 selection:bg-quicksell selection:text-white antialiased">
+    <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
