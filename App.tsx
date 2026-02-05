@@ -3,8 +3,8 @@ import { ChatInterface } from './components/ChatInterface';
 import { Dashboard } from './components/Dashboard';
 import { SiteViewer } from './components/SiteViewer';
 import { ChatMessage, Listing, DealStatus } from './types';
-import { generateMockListings, simulateSellerResponse } from './services/mockMarketService';
-import { generateAgentResponse } from './services/geminiService';
+import { generateMockListings, simulateSellerResponse, checkHasStockImages } from './services/mockMarketService';
+import { generateAgentResponse, generateListingImage } from './services/geminiService';
 import { CheckCircle2, Calendar, Loader2 } from 'lucide-react';
 
 const INITIAL_MESSAGES: ChatMessage[] = [
@@ -30,66 +30,103 @@ const App: React.FC = () => {
   const scanIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addMessage = (role: 'user' | 'assistant', content: string) => {
-    setMessages(prev => [...prev, {
+    const newMessage: ChatMessage = {
       id: Date.now().toString(),
       role,
       content,
       timestamp: new Date()
-    }]);
+    };
+    setMessages(prev => [...prev, newMessage]);
+    return newMessage;
+  };
+
+  // Reusable function to start bulk or specific negotiations
+  const startBatchNegotiation = (specificIds: string[] = []) => {
+    // If no specific IDs provided, negotiate all Pending items
+    const targetIds = specificIds.length > 0 
+      ? specificIds 
+      : listings.filter(l => l.status === DealStatus.Pending).map(l => l.id);
+    
+    if (targetIds.length === 0) return;
+
+    setListings(prev => prev.map(l => {
+      if (targetIds.includes(l.id)) {
+        return {
+          ...l,
+          status: DealStatus.Negotiating,
+          aiActionState: "Initializing Agent...",
+        };
+      }
+      return l;
+    }));
+
+    setNegotiationQueue(prev => {
+       const next = new Set(prev);
+       targetIds.forEach(id => next.add(id));
+       return next;
+    });
+    
+    setIsAutoNegotiating(true);
   };
 
   const handleSendMessage = async (text: string) => {
-    addMessage('user', text);
+    // 1. Add User Message
+    const userMsg = addMessage('user', text);
     setIsTyping(true);
 
     const lowerText = text.toLowerCase();
     
-    if (lowerText.includes('find') || lowerText.includes('search') || lowerText.includes('iphone')) {
-      startProgressiveSearch(text);
+    // --- Manual Override Triggers ---
+    if (lowerText.includes('negotiate all') || lowerText.includes('start all')) {
+      startBatchNegotiation();
+      addMessage('assistant', `Deploying negotiation bots to sellers. Watch the dashboard updates.`);
+      setIsTyping(false);
       return;
     }
 
-    if (lowerText.includes('negotiate all') || lowerText.includes('start all') || lowerText.includes('yes')) {
-      const pendingIds = listings.filter(l => l.status === DealStatus.Pending).map(l => l.id);
-      
-      if (pendingIds.length > 0) {
-        setListings(prev => prev.map(l => {
-          if (pendingIds.includes(l.id)) {
-            return {
-              ...l,
-              status: DealStatus.Negotiating,
-              aiActionState: "Initializing Agent...",
-            };
-          }
-          return l;
-        }));
-
-        setNegotiationQueue(new Set(pendingIds));
-        setIsAutoNegotiating(true);
-        addMessage('assistant', `Deploying negotiation bots to ${pendingIds.length} sellers. Watch the dashboard updates.`);
-        setIsTyping(false);
-        return;
-      }
+    // --- AI Processing ---
+    const currentHistory = [...messages, userMsg];
+    
+    const { text: aiText, searchTrigger, negotiationTrigger } = await generateAgentResponse(text, listings, currentHistory);
+    
+    setIsTyping(false);
+    
+    if (aiText) {
+      addMessage('assistant', aiText);
     }
 
-    const aiResponse = await generateAgentResponse(text, listings);
-    setIsTyping(false);
-    addMessage('assistant', aiResponse);
+    // Handle Tool Calls
+    if (searchTrigger) {
+      startProgressiveSearch(searchTrigger);
+    }
+
+    if (negotiationTrigger) {
+      // If AI returned specific IDs, use them. If it returned empty array (typical for "start"), target all pending.
+      startBatchNegotiation(negotiationTrigger);
+    }
   };
 
   const startProgressiveSearch = async (query: string) => {
     setIsScanning(true);
     setListings([]);
-    addMessage('assistant', `Acknowledged. Scouring marketplaces for "${query}"...`);
+    
+    // AI IMAGE GENERATION LOGIC
+    let aiGeneratedImage = undefined;
+    
+    const hasStock = checkHasStockImages(query);
+    if (!hasStock) {
+      addMessage('assistant', "I'm generating visual previews for this unique item. Please wait a moment...");
+      aiGeneratedImage = await generateListingImage(query);
+    }
 
-    const allResults = generateMockListings(query);
+    // Start filling the grid
+    const allResults = generateMockListings(query, aiGeneratedImage);
     let currentIndex = 0;
 
     const addNextListing = () => {
       if (currentIndex >= allResults.length) {
         setIsScanning(false);
-        setIsTyping(false);
-        generateAgentResponse(query, allResults).then(res => addMessage('assistant', res));
+        addMessage('assistant', `Found ${allResults.length} listings for "${query}". Shall I start negotiating?`);
         return;
       }
 
@@ -212,17 +249,7 @@ const App: React.FC = () => {
 
 
   const handleNegotiateSingle = (id: string) => {
-    setListings(prev => prev.map(l => {
-      if (l.id === id) {
-        return {
-          ...l,
-          status: DealStatus.Negotiating,
-          aiActionState: "Connecting...",
-        };
-      }
-      return l;
-    }));
-    setNegotiationQueue(prev => new Set(prev).add(id));
+    startBatchNegotiation([id]);
   };
 
   const handleConfirmDeal = (id: string) => {

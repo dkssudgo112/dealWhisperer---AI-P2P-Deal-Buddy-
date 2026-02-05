@@ -1,36 +1,78 @@
 import { Listing, Platform, DealStatus } from '../types';
 
 // Curated list of reliable, high-quality images for the demo
-const PRODUCT_IMAGES = {
+const PRODUCT_IMAGES: Record<string, string> = {
+  // Phones
   iphone_black: 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&q=80&w=400&h=400',
   iphone_purple: 'https://images.unsplash.com/photo-1556656793-02715d8dd660?auto=format&fit=crop&q=80&w=400&h=400',
   iphone_box: 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&q=80&w=400&h=400',
   iphone_gold: 'https://images.unsplash.com/photo-1523206489230-c012c64b2b48?auto=format&fit=crop&q=80&w=400&h=400',
-  iphone_cracked: 'https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&q=80&w=400&h=400', 
-  iphone_generic: 'https://images.unsplash.com/photo-1512054502232-120bbc5a0d16?auto=format&fit=crop&q=80&w=400&h=400',
-  generic_tech: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&q=80&w=400&h=400',
+  
+  // TVs / Monitors
+  tv_1: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&q=80&w=400&h=400',
+  tv_2: 'https://images.unsplash.com/photo-1509281373149-e957c629640d?auto=format&fit=crop&q=80&w=400&h=400',
+  tv_3: 'https://images.unsplash.com/photo-1601944177325-f8867652837f?auto=format&fit=crop&q=80&w=400&h=400',
+  monitor: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&q=80&w=400&h=400',
+  
+  // Laptops
+  laptop_1: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&q=80&w=400&h=400',
+  laptop_2: 'https://images.unsplash.com/photo-1531297424005-06340436a58a?auto=format&fit=crop&q=80&w=400&h=400',
+  
+  // Audio
+  headphone: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=400&h=400',
+  speaker: 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&q=80&w=400&h=400',
+
+  // Misc
+  camera: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=400&h=400',
+  bike: 'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?auto=format&fit=crop&q=80&w=400&h=400',
+  
+  // Fallbacks
   box_only: 'https://images.unsplash.com/photo-1605170439002-90845e8c0137?auto=format&fit=crop&q=80&w=400&h=400'
+};
+
+export const checkHasStockImages = (query: string): boolean => {
+  const lower = query.toLowerCase();
+  const keys = Object.keys(PRODUCT_IMAGES);
+  
+  // Check specific categories
+  if (lower.includes('tv') || lower.includes('television') || lower.includes('monitor')) return true;
+  if (lower.includes('phone') || lower.includes('iphone') || lower.includes('android')) return true;
+  if (lower.includes('laptop') || lower.includes('macbook') || lower.includes('computer')) return true;
+  if (lower.includes('camera') || lower.includes('lens')) return true;
+  if (lower.includes('headphone') || lower.includes('audio') || lower.includes('speaker')) return true;
+  if (lower.includes('bike') || lower.includes('bicycle')) return true;
+
+  return false;
 };
 
 const getImageForQuery = (query: string, index: number): string => {
   const lower = query.toLowerCase();
   
   if (lower.includes('phone') || lower.includes('iphone') || lower.includes('apple')) {
-    const phoneImages = [
-      PRODUCT_IMAGES.iphone_black,
-      PRODUCT_IMAGES.iphone_purple,
-      PRODUCT_IMAGES.iphone_gold,
-      PRODUCT_IMAGES.iphone_generic,
-      PRODUCT_IMAGES.iphone_box
-    ];
-    return phoneImages[index % phoneImages.length];
+    const images = [PRODUCT_IMAGES.iphone_black, PRODUCT_IMAGES.iphone_purple, PRODUCT_IMAGES.iphone_gold, PRODUCT_IMAGES.iphone_box];
+    return images[index % images.length];
   }
+  
+  if (lower.includes('tv') || lower.includes('television') || lower.includes('monitor')) {
+    const images = [PRODUCT_IMAGES.tv_1, PRODUCT_IMAGES.tv_2, PRODUCT_IMAGES.tv_3, PRODUCT_IMAGES.monitor];
+    return images[index % images.length];
+  }
+
+  if (lower.includes('laptop') || lower.includes('macbook')) {
+    const images = [PRODUCT_IMAGES.laptop_1, PRODUCT_IMAGES.laptop_2];
+    return images[index % images.length];
+  }
+
+  if (lower.includes('camera')) return PRODUCT_IMAGES.camera;
+  if (lower.includes('headphone') || lower.includes('audio')) return PRODUCT_IMAGES.headphone;
+  if (lower.includes('bike')) return PRODUCT_IMAGES.bike;
 
   return `https://placehold.co/400x400/1e293b/FFF?text=${encodeURIComponent(query)}+${index + 1}`;
 };
 
 // Specific Scenario Data for "iPhone 14 Pro"
 const SCENARIO_LISTINGS: Listing[] = [
+  // ... (keep existing scenario listings unchanged, just truncated for brevity in update if needed, but for XML correctness I should include them or just assume the file is replaced. I will replace full content to be safe)
   // --- QuickSell Items ---
   {
     id: 'qs-001',
@@ -55,7 +97,7 @@ const SCENARIO_LISTINGS: Listing[] = [
     id: 'qs-002',
     title: 'iPhone 14 128GB Blue - Unlocked',
     platform: Platform.QuickSell,
-    imageUrl: PRODUCT_IMAGES.iphone_generic,
+    imageUrl: 'https://images.unsplash.com/photo-1512054502232-120bbc5a0d16?auto=format&fit=crop&q=80&w=400&h=400',
     originalPrice: 620,
     currentPrice: 620,
     condition: 'B',
@@ -93,7 +135,7 @@ const SCENARIO_LISTINGS: Listing[] = [
     id: 'qs-004',
     title: 'iPhone 14 Plus Midnight 128GB',
     platform: Platform.QuickSell,
-    imageUrl: PRODUCT_IMAGES.iphone_cracked,
+    imageUrl: 'https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&q=80&w=400&h=400',
     originalPrice: 600,
     currentPrice: 600,
     condition: 'C',
@@ -112,7 +154,7 @@ const SCENARIO_LISTINGS: Listing[] = [
     id: 'qs-005',
     title: 'iPhone 14 Pro Silver 512GB',
     platform: Platform.QuickSell,
-    imageUrl: PRODUCT_IMAGES.iphone_generic,
+    imageUrl: 'https://images.unsplash.com/photo-1512054502232-120bbc5a0d16?auto=format&fit=crop&q=80&w=400&h=400',
     originalPrice: 780,
     currentPrice: 780,
     condition: 'B',
@@ -171,7 +213,7 @@ const SCENARIO_LISTINGS: Listing[] = [
     id: 'lm-003',
     title: 'iPhone 14 128GB Starlight',
     platform: Platform.LocalMart,
-    imageUrl: PRODUCT_IMAGES.iphone_generic,
+    imageUrl: 'https://images.unsplash.com/photo-1512054502232-120bbc5a0d16?auto=format&fit=crop&q=80&w=400&h=400',
     originalPrice: 580,
     currentPrice: 580,
     condition: 'B',
@@ -211,7 +253,7 @@ const SCENARIO_LISTINGS: Listing[] = [
     id: 'cd-001',
     title: 'iphone 14 pro 128gb unlockd',
     platform: Platform.ClassiDeals,
-    imageUrl: PRODUCT_IMAGES.iphone_cracked,
+    imageUrl: 'https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&q=80&w=400&h=400',
     originalPrice: 600,
     currentPrice: 600,
     condition: 'C',
@@ -230,7 +272,7 @@ const SCENARIO_LISTINGS: Listing[] = [
     id: 'cd-002',
     title: 'IPHONE 14 PRO MAX CHEAP',
     platform: Platform.ClassiDeals,
-    imageUrl: PRODUCT_IMAGES.iphone_generic,
+    imageUrl: 'https://images.unsplash.com/photo-1512054502232-120bbc5a0d16?auto=format&fit=crop&q=80&w=400&h=400',
     originalPrice: 650,
     currentPrice: 650,
     condition: 'C',
@@ -249,7 +291,7 @@ const SCENARIO_LISTINGS: Listing[] = [
     id: 'cd-003',
     title: 'iphone 14 plus blue clean',
     platform: Platform.ClassiDeals,
-    imageUrl: PRODUCT_IMAGES.iphone_generic,
+    imageUrl: 'https://images.unsplash.com/photo-1512054502232-120bbc5a0d16?auto=format&fit=crop&q=80&w=400&h=400',
     originalPrice: 550,
     currentPrice: 550,
     condition: 'B',
@@ -285,7 +327,7 @@ const SCENARIO_LISTINGS: Listing[] = [
   }
 ];
 
-export const generateMockListings = (query: string): Listing[] => {
+export const generateMockListings = (query: string, customImage?: string): Listing[] => {
   const lowerQ = query.toLowerCase();
   
   // Return the perfect scenario if user asks for iphone 14
@@ -303,7 +345,8 @@ export const generateMockListings = (query: string): Listing[] => {
     const price = 100 + Math.floor(Math.random() * 800);
     const conditions: ('S'|'A'|'B'|'C')[] = ['S', 'A', 'B', 'C', 'B', 'A'];
     
-    const image = getImageForQuery(query, i);
+    // Priority: Custom AI Image -> Stock Image -> Placeholder
+    let image = customImage || getImageForQuery(query, i);
 
     listings.push({
       id: `random-${i}`,
@@ -329,7 +372,6 @@ export const generateMockListings = (query: string): Listing[] => {
 };
 
 // --- ENHANCED SELLER LOGIC ---
-// Simulates a multi-turn negotiation where sellers don't just say "yes" immediately.
 export const simulateSellerResponse = (
   listing: Listing, 
   offerPrice: number, 
@@ -337,7 +379,6 @@ export const simulateSellerResponse = (
 ): { newPrice: number; message: string; status: DealStatus } => {
   
   const gap = offerPrice - listing.minPriceLimit;
-  const isAvailable = true; // Simplified for now
 
   // Default response if initial inquiry (no price offer usually)
   if (turns <= 2 && offerPrice === listing.currentPrice) {
@@ -358,9 +399,7 @@ export const simulateSellerResponse = (
   }
 
   // TUG OF WAR LOGIC based on turns
-  // If it's early in the conversation (turns 2-4), sellers fight back even if price is OK.
   if (turns < 5 && gap >= 0) {
-      // Pretend to hesitate
       if (Math.random() > 0.5) {
         const counter = Math.floor((listing.currentPrice + offerPrice) / 2);
         if (listing.sellerPersona === 'firm') {
@@ -375,10 +414,8 @@ export const simulateSellerResponse = (
   }
 
   // ACCEPTANCE LOGIC
-  // If price is above min limit AND (turns are sufficient OR price is very good)
   if (gap >= 0) {
     if (listing.sellerPersona === 'firm' && turns < 4) {
-      // Firm sellers take longer
       return { newPrice: listing.currentPrice, message: "I'll think about it. Message me again in an hour.", status: DealStatus.Negotiating };
     }
 
@@ -389,7 +426,7 @@ export const simulateSellerResponse = (
     };
   }
 
-  // COUNTER OFFER LOGIC (gap is negative but close)
+  // COUNTER OFFER LOGIC
   const counter = Math.max(listing.minPriceLimit, Math.floor((listing.currentPrice + offerPrice) / 2));
   return {
     newPrice: counter,
