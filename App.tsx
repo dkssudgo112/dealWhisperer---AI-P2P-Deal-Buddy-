@@ -5,7 +5,7 @@ import { SiteViewer } from './components/SiteViewer';
 import { ChatMessage, Listing, DealStatus } from './types';
 import { generateMockListings, simulateSellerResponse, checkHasStockImages } from './services/mockMarketService';
 import { generateAgentResponse, generateListingImage } from './services/geminiService';
-import { CheckCircle2, Calendar, Loader2 } from 'lucide-react';
+import { CheckCircle2, Calendar, Loader2, GripHorizontal } from 'lucide-react';
 
 const INITIAL_MESSAGES: ChatMessage[] = [
   {
@@ -27,6 +27,10 @@ const App: React.FC = () => {
   const [viewingSiteListing, setViewingSiteListing] = useState<Listing | null>(null);
   const [isScheduling, setIsScheduling] = useState(false);
   
+  // Split View State
+  const [splitRatio, setSplitRatio] = useState(50); // Percentage height of top panel
+  const isDragging = useRef(false);
+
   const scanIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addMessage = (role: 'user' | 'assistant', content: string) => {
@@ -305,9 +309,48 @@ const App: React.FC = () => {
     setShowScheduleModal(null);
   };
 
+  // --- Resizer Logic ---
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    isDragging.current = true;
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'row-resize';
+
+    const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
+      if (!isDragging.current) return;
+      
+      const clientY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      const windowHeight = window.innerHeight;
+      const newRatio = (clientY / windowHeight) * 100;
+      
+      // Clamp between 20% and 80% to prevent full collapse
+      const clampedRatio = Math.min(80, Math.max(20, newRatio));
+      setSplitRatio(clampedRatio);
+    };
+
+    const handleUp = () => {
+      isDragging.current = false;
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleUp);
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleUp);
+  };
+
   return (
-    <div className="flex flex-col h-screen text-slate-200 font-sans selection:bg-indigo-500/30">
-      <div className="h-1/2 min-h-[400px] relative z-20 shadow-2xl">
+    <div className="flex flex-col h-[100dvh] text-slate-200 font-sans selection:bg-indigo-500/30 overflow-hidden">
+      {/* Resizable Chat Interface */}
+      <div 
+        style={{ height: `${splitRatio}%` }} 
+        className="shrink-0 relative z-20 shadow-2xl overflow-hidden min-h-[20%]"
+      >
         <ChatInterface 
           messages={messages} 
           onSendMessage={handleSendMessage} 
@@ -315,6 +358,19 @@ const App: React.FC = () => {
         />
       </div>
 
+      {/* Drag Handle */}
+      <div 
+        className="h-6 -mt-3 -mb-3 relative z-30 cursor-row-resize flex items-center justify-center group touch-none"
+        onMouseDown={handleDragStart}
+        onTouchStart={handleDragStart}
+      >
+        <div className="w-full h-full absolute inset-0 bg-transparent group-hover:bg-indigo-500/10 transition-colors"></div>
+        <div className="w-16 h-1 bg-slate-600 rounded-full group-hover:bg-indigo-400 group-active:bg-indigo-500 transition-colors shadow-sm flex items-center justify-center">
+            <GripHorizontal size={12} className="text-slate-900/50" />
+        </div>
+      </div>
+
+      {/* Resizable Dashboard (Takes remaining space) */}
       <div className="flex-1 min-h-0 bg-slate-900 relative z-10">
         <Dashboard 
           listings={listings} 
