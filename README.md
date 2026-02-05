@@ -15,6 +15,10 @@ This contains everything you need to run your app locally.
 
 [![Demo Video](https://img.youtube.com/vi/aqsKOWwkioM/0.jpg)](https://www.youtube.com/shorts/aqsKOWwkioM)
 
+## Live Demo
+
+**Try it now:** https://dealwhisperer-448811452626.us-west1.run.app/
+
 View your app in AI Studio: https://ai.studio/apps/drive/1Uct7BrFtxfDinyAr1ThvP8zuBeJnD5V9
 
 ## Run Locally
